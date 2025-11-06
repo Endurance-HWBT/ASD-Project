@@ -10,4 +10,5 @@ class Model():
         mp_drawing = mp.solutions.drawing_utils
         hands = mp_hands.Hands(max_num_hands=num_of_hands, min_detection_confidence=confidence_score)
         screen_width, screen_height = pyautogui.size()
+        return hands,screen_height,screen_width
  
