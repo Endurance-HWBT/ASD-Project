@@ -8,8 +8,8 @@ model=Model()
 rcog,screen_height,screen_width = model.initialize_model(num_of_hands=1,confidence_score=0.7)
 cap = cv2.VideoCapture(0)
 prev_x, prev_y = 0, 0
-click_threshold = 15
-smoothening = 3
+click_threshold = 30
+smoothening = 10
 click_down = True
 while True:
     ret, frame = cap.read()
@@ -26,6 +26,11 @@ while True:
             lm = hand_landmarks.landmark
             x_coords = [int(p.x * w) for p in lm]
             y_coords = [int(p.y * h) for p in lm]
+
+            z_values = [p.z for p in lm]
+            avg_depth = np.mean(z_values)
+            cv2.putText(frame, f"Dept:{avg_depth}",(0,100),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 0)
+
             x_min, x_max = min(x_coords), max(x_coords)
             y_min, y_max = min(y_coords), max(y_coords)
 
@@ -43,11 +48,11 @@ while True:
             y = int(((index_finger.y +middle_finger.y)/2)* h)
 
             # Convert to screen coordinates
-            # screen_x = np.interp(x, (100, w-100), (0, screen_width))
-            # screen_y = np.interp(y, (100, h-100), (0, screen_height))
+            screen_x = np.interp(x, (100, w-100), (0, screen_width))
+            screen_y = np.interp(y, (100, h-100), (0, screen_height))
 
-            screen_x = np.interp(x, (x_min, x_max), (0, screen_width))
-            screen_y = np.interp(y, (y_min, y_max), (0, screen_height))
+            # screen_x = np.interp(x, (x_min, x_max), (0, screen_width))
+            # screen_y = np.interp(y, (y_min, y_max), (0, screen_height))
 
             # Smooth movement
             cur_x = prev_x + (screen_x - prev_x) / smoothening
@@ -83,6 +88,8 @@ while True:
                     cv2.putText(frame, 'Right Click!', (x, y-20), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
             else:
                 click_down = False
+
+            
 
 
 
