@@ -8,7 +8,7 @@ model=Model()
 rcog,screen_height,screen_width = model.initialize_model(num_of_hands=1,confidence_score=0.7)
 cap = cv2.VideoCapture(0)
 prev_x, prev_y = 0, 0
-click_threshold = 30
+click_threshold = 20
 smoothening = 3
 scroll_threshold = 40
 click_down = True
