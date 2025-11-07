@@ -24,15 +24,30 @@ while True:
         for hand_landmarks in results.multi_hand_landmarks:
             # Extract coordinates
             lm = hand_landmarks.landmark
-            index_finger = lm[8]  # index tip
+            x_coords = [int(p.x * w) for p in lm]
+            y_coords = [int(p.y * h) for p in lm]
+            x_min, x_max = min(x_coords), max(x_coords)
+            y_min, y_max = min(y_coords), max(y_coords)
+
+            # Draw bounding box
+            cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0, 255, 255), 2)
+            cv2.putText(frame, "Tracking Area", (x_min, y_min - 10),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+            
+            index_finger = lm[8]
+            middle_finger = lm[12]
             thumb = lm[4]
-            pinky = lm[16] 
-            x = int(index_finger.x * w)
-            y = int(index_finger.y * h)
+            ring = lm[16]
+            pinky = lm[20] 
+
+            x = int(((index_finger.x+middle_finger.x)/2) * w)
+            y = int(((index_finger.y +middle_finger.y)/2)* h)
 
             # Convert to screen coordinates
-            screen_x = np.interp(x, (100, w-100), (0, screen_width))
-            screen_y = np.interp(y, (100, h-100), (0, screen_height))
+            # screen_x = np.interp(x, (100, w-100), (0, screen_width))
+            # screen_y = np.interp(y, (100, h-100), (0, screen_height))
+
+            screen_x = np.interp(x, (x_min, x_max), (0, screen_width))
+            screen_y = np.interp(y, (y_min, y_max), (0, screen_height))
 
             # Smooth movement
             cur_x = prev_x + (screen_x - prev_x) / smoothening
@@ -41,22 +56,34 @@ while True:
             prev_x, prev_y = cur_x, cur_y
             
             thumb_x, thumb_y = int(thumb.x * w), int(thumb.y * h)
+            ring_x, ring_y = int(ring.x * w), int(ring.y * h)
             pinky_x, pinky_y = int(pinky.x * w), int(pinky.y * h)
 
             cv2.circle(frame, (x, y), 10, (255, 0, 0), -1)
             cv2.circle(frame, (thumb_x, thumb_y), 10, (0, 255, 0), -1)
+            cv2.circle(frame, (ring_x, ring_y), 10, (0, 255, 0), -1)
             cv2.circle(frame, (pinky_x, pinky_y), 10, (0, 255, 0), -1)
-            # cv2.line(frame, (x, y), (thumb_x, thumb_y), (255, 255, 0), 2)
+            cv2.line(frame, (thumb_x, thumb_y), (ring_x, ring_y), (255, 255, 0), 2)
             cv2.line(frame, (thumb_x, thumb_y), (pinky_x, pinky_y), (255, 255, 0), 2)
-            distance = np.hypot(pinky_x - thumb_x, pinky_y - thumb_y)
+            distance1 = np.hypot(ring_x - thumb_x, ring_y - thumb_y)
+            distance2 = np.hypot(pinky_x - thumb_x, pinky_y - thumb_y)
 
-            if distance < click_threshold:
+            if distance1 < click_threshold:
                 if not click_down:
                     pyautogui.click()
                     click_down = True
-                    cv2.putText(frame, 'Click!', (x, y-20), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
+                    cv2.putText(frame, 'Left Click!', (x, y-20), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
             else:
                 click_down = False
+
+            if distance2 < click_threshold:
+                if not click_down:
+                    pyautogui.rightClick()
+                    click_down = True
+                    cv2.putText(frame, 'Right Click!', (x, y-20), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
+            else:
+                click_down = False
+
 
 
     cv2.imshow('Virtual Mouse', frame)
