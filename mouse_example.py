@@ -71,7 +71,7 @@ while True:
             cv2.circle(frame, (thumb_x, thumb_y), 10, (0, 255, 0), -1)
             cv2.circle(frame, (ring_x, ring_y), 10, (0, 255, 0), -1)
             cv2.circle(frame, (pinky_x, pinky_y), 10, (0, 255, 0), -1)
-            cv2.line(frame, (thumb_x, thumb_y), (ring_x, ring_y), (255, 255, 0), 2)
+                
             cv2.line(frame, (thumb_x, thumb_y), (pinky_x, pinky_y), (255, 255, 0), 2)
             distance1 = np.hypot(ring_x - thumb_x, ring_y - thumb_y)
             distance2 = np.hypot(pinky_x - thumb_x, pinky_y - thumb_y)
