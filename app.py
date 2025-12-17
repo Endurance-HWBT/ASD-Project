@@ -36,61 +36,65 @@ class VirtualMouse:
         self.prev_x, self.prev_y = cur_x, cur_y
         
     def detect_gestures(self, frame, h, w):
-     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-     results = self.rcog_hands.process(rgb)
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        results = self.rcog_hands.process(rgb)
 
-     if results.multi_hand_landmarks:
-        for hand_landmarks in results.multi_hand_landmarks:
-            lm = hand_landmarks.landmark
+        if results.multi_hand_landmarks:
+            for hand_landmarks in results.multi_hand_landmarks:
+                lm = hand_landmarks.landmark
 
-            # Finger coordinates
-            thumb_x, thumb_y = int(lm[4].x * w), int(lm[4].y * h)
-            index_x, index_y = int(lm[8].x * w), int(lm[8].y * h)
-            middle_x, middle_y = int(lm[12].x * w), int(lm[12].y * h)
-            ring_x, ring_y = int(lm[16].x * w), int(lm[16].y * h)
-            pinky_x, pinky_y = int(lm[20].x * w), int(lm[20].y * h)
+                # 🔧 FIX: Calculate finger coords FIRST
+                thumb_x, thumb_y = int(lm[4].x * w), int(lm[4].y * h)
+                index_x, index_y = int(lm[8].x * w), int(lm[8].y * h)
+                middle_x, middle_y = int(lm[12].x * w), int(lm[12].y * h)
+                ring_x, ring_y = int(lm[16].x * w), int(lm[16].y * h)
+                pinky_x, pinky_y = int(lm[20].x * w), int(lm[20].y * h)
 
-            # Draw points (optional)
-            cv2.circle(frame, (thumb_x, thumb_y), 8, (0,255,0), -1)
-            cv2.circle(frame, (ring_x, ring_y), 8, (0,255,0), -1)
-            cv2.circle(frame, (pinky_x, pinky_y), 8, (0,255,0), -1)
-            cv2.circle(frame, (middle_x, middle_y), 8, (0,255,0), -1)
+                # Draw only essential points
+                cv2.circle(frame, (index_x, index_y), 8, (0, 255, 0), -1)
+                cv2.circle(frame, (thumb_x, thumb_y), 8, (255, 0, 0), -1)
 
-            # ================= INSERTED CODE =================
-            current_time = time.time()
+                # Draw gesture lines
+                cv2.line(frame, (thumb_x, thumb_y), (ring_x, ring_y), (0, 255, 255), 2)     # Left click
+                cv2.line(frame, (thumb_x, thumb_y), (pinky_x, pinky_y), (255, 255, 0), 2)   # Right click
+                cv2.line(frame, (thumb_x, thumb_y), (middle_x, middle_y), (255, 0, 255), 2) # Switch tab
 
-            # Left Click (thumb + ring)
-            distance_left = np.hypot(ring_x - thumb_x, ring_y - thumb_y)
-            if distance_left < 40 and not self.click_locked:
-                pyautogui.click()
-                self.click_locked = True
-                self.last_action_time = current_time
-                cv2.putText(frame, 'Left Click', (50, 50),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
+                # 🔥 ALWAYS MOVE
+                self.move(index_x, index_y, smoothening=4, h=h, w=w)
 
-            # Right Click (thumb + pinky)
-            distance_right = np.hypot(pinky_x - thumb_x, pinky_y - thumb_y)
-            if distance_right < 40 and not self.click_locked:
-                pyautogui.rightClick()
-                self.click_locked = True
-                self.last_action_time = current_time
-                cv2.putText(frame, 'Right Click', (50, 90),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
+                current_time = time.time()
 
-            # Switch Tab (thumb + middle)
-            distance_tab = np.hypot(middle_x - thumb_x, middle_y - thumb_y)
-            if distance_tab < 40 and not self.click_locked:
-                pyautogui.hotkey("ctrl", "tab")
-                self.click_locked = True
-                self.last_action_time = current_time
-                cv2.putText(frame, 'Switch Tab', (50, 130),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
+                # 🔧 FIX: Optimize - only check gestures if not locked
+                if not self.click_locked:
+                    # Calculate distances once
+                    thumb_ring_dist = np.hypot(ring_x-thumb_x, ring_y-thumb_y)
+                    thumb_pinky_dist = np.hypot(pinky_x-thumb_x, pinky_y-thumb_y)
+                    thumb_middle_dist = np.hypot(middle_x-thumb_x, middle_y-thumb_y)
+                    
+                    # Left click
+                    if thumb_ring_dist < 40:
+                        pyautogui.click()
+                        self.click_locked = True
+                        self.last_action_time = current_time
 
-            # Unlock after delay
-            if self.click_locked and (current_time - self.last_action_time) > self.action_delay:
-                self.click_locked = False
+                    # Right click
+                    elif thumb_pinky_dist < 40:
+                        pyautogui.rightClick()
+                        self.click_locked = True
+                        self.last_action_time = current_time
 
-     return frame
+                    # Switch tab
+                    elif thumb_middle_dist < 40:
+                        pyautogui.hotkey("ctrl", "tab")
+                        self.click_locked = True
+                        self.last_action_time = current_time
+
+                # Unlock after delay
+                if self.click_locked and (current_time - self.last_action_time) > self.action_delay:
+                    self.click_locked = False
+
+        return frame
+
 
 
 class PostureMonitor:
@@ -202,6 +206,8 @@ class PostureMonitor:
                     cv2.FONT_HERSHEY_DUPLEX, 1, (255, 255, 255), 3)
         cv2.putText(frame, "Straighten your back!", (50, 90), 
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+        cv2.putText(frame, "Sit up straight, shoulders back!", (50, 130), 
+            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
     
     def process_frame(self, frame):
         global posture_warning
@@ -285,8 +291,7 @@ def generate_mouse_frames():
 
     cap.release()
     virtual_mouse.cap = None
-    
-    virtual_mouse.cap.release()
+    # 🔧 REMOVED duplicate cap.release() that was here!
 
 def generate_posture_frames():
     global posture_camera_active
