@@ -5,6 +5,7 @@ import threading
 import time
 from model import Model
 import pyautogui
+import time
 
 app = Flask(__name__)
 
@@ -22,6 +23,10 @@ class VirtualMouse:
         self.prev_x, self.prev_y = 0, 0
         self.cap = None
         
+        self.click_locked = False
+        self.last_action_time = 0
+        self.action_delay = 0.4
+        
     def move(self, target_x, target_y, smoothening, h, w):
         screen_x = np.interp(target_x, (100, w-100), (0, self.screen_width))
         screen_y = np.interp(target_y, (100, h-100), (0, self.screen_height))
@@ -31,54 +36,62 @@ class VirtualMouse:
         self.prev_x, self.prev_y = cur_x, cur_y
         
     def detect_gestures(self, frame, h, w):
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = self.rcog_hands.process(rgb)
-        
-        if results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
-                lm = hand_landmarks.landmark
-                index_finger = lm[8]
-                middle_finger = lm[12]
-                thumb = lm[4]
-                ring = lm[16]
-                pinky = lm[20]
-                
-                # Get coordinates
-                thumb_x, thumb_y = int(thumb.x * w), int(thumb.y * h)
-                ring_x, ring_y = int(ring.x * w), int(ring.y * h)
-                pinky_x, pinky_y = int(pinky.x * w), int(pinky.y * h)
-                index_x, index_y = int(index_finger.x * w), int(index_finger.y * h)
-                middle_x, middle_y = int(middle_finger.x * w), int(middle_finger.y * h)
-                
-                # Draw visual feedback
-                cv2.circle(frame, (middle_x, middle_y), 10, (0, 255, 0), -1)
-                cv2.circle(frame, (thumb_x, thumb_y), 10, (0, 255, 0), -1)
-                cv2.circle(frame, (ring_x, ring_y), 10, (0, 255, 0), -1)
-                cv2.circle(frame, (pinky_x, pinky_y), 10, (0, 255, 0), -1)
-                cv2.circle(frame, (index_x, index_y), 10, (0, 255, 0), -1)
-                cv2.line(frame, (thumb_x, thumb_y), (ring_x, ring_y), (255, 255, 0), 2)
-                cv2.line(frame, (thumb_x, thumb_y), (pinky_x, pinky_y), (255, 255, 0), 2)
-                cv2.line(frame, (thumb_x, thumb_y), (middle_x, middle_y), (255, 255, 0), 2)
-                
-                # Move cursor
-                self.move(index_x, index_y, 4, h, w)
-                
-                # Left click detection
-                distance1 = np.hypot(ring_x - thumb_x, ring_y - thumb_y)
-                if distance1 < 20:
-                    cv2.putText(frame, 'Left Click!', (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-                
-                # Right click detection
-                distance2 = np.hypot(pinky_x - thumb_x, pinky_y - thumb_y)
-                if distance2 < 20:
-                    cv2.putText(frame, 'Right Click!', (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-                
-                # Tab switch detection
-                distance3 = np.hypot(middle_x - thumb_x, middle_y - thumb_y)
-                if distance3 < 20:
-                    cv2.putText(frame, 'Switch Tab!', (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        
-        return frame
+     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+     results = self.rcog_hands.process(rgb)
+
+     if results.multi_hand_landmarks:
+        for hand_landmarks in results.multi_hand_landmarks:
+            lm = hand_landmarks.landmark
+
+            # Finger coordinates
+            thumb_x, thumb_y = int(lm[4].x * w), int(lm[4].y * h)
+            index_x, index_y = int(lm[8].x * w), int(lm[8].y * h)
+            middle_x, middle_y = int(lm[12].x * w), int(lm[12].y * h)
+            ring_x, ring_y = int(lm[16].x * w), int(lm[16].y * h)
+            pinky_x, pinky_y = int(lm[20].x * w), int(lm[20].y * h)
+
+            # Draw points (optional)
+            cv2.circle(frame, (thumb_x, thumb_y), 8, (0,255,0), -1)
+            cv2.circle(frame, (ring_x, ring_y), 8, (0,255,0), -1)
+            cv2.circle(frame, (pinky_x, pinky_y), 8, (0,255,0), -1)
+            cv2.circle(frame, (middle_x, middle_y), 8, (0,255,0), -1)
+
+            # ================= INSERTED CODE =================
+            current_time = time.time()
+
+            # Left Click (thumb + ring)
+            distance_left = np.hypot(ring_x - thumb_x, ring_y - thumb_y)
+            if distance_left < 40 and not self.click_locked:
+                pyautogui.click()
+                self.click_locked = True
+                self.last_action_time = current_time
+                cv2.putText(frame, 'Left Click', (50, 50),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
+
+            # Right Click (thumb + pinky)
+            distance_right = np.hypot(pinky_x - thumb_x, pinky_y - thumb_y)
+            if distance_right < 40 and not self.click_locked:
+                pyautogui.rightClick()
+                self.click_locked = True
+                self.last_action_time = current_time
+                cv2.putText(frame, 'Right Click', (50, 90),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
+
+            # Switch Tab (thumb + middle)
+            distance_tab = np.hypot(middle_x - thumb_x, middle_y - thumb_y)
+            if distance_tab < 40 and not self.click_locked:
+                pyautogui.hotkey("ctrl", "tab")
+                self.click_locked = True
+                self.last_action_time = current_time
+                cv2.putText(frame, 'Switch Tab', (50, 130),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
+
+            # Unlock after delay
+            if self.click_locked and (current_time - self.last_action_time) > self.action_delay:
+                self.click_locked = False
+
+     return frame
+
 
 class PostureMonitor:
     def __init__(self):
@@ -248,39 +261,57 @@ virtual_mouse = VirtualMouse()
 posture_monitor = PostureMonitor()
 
 def generate_mouse_frames():
-    virtual_mouse.cap = cv2.VideoCapture(0)
+    global mouse_camera_active
+
+    cap = cv2.VideoCapture(0)
+    virtual_mouse.cap = cap
+
+    if not cap.isOpened():
+        mouse_camera_active = False
+        return
+
     while mouse_camera_active:
-        ret, frame = virtual_mouse.cap.read()
+        ret, frame = cap.read()
         if not ret:
             break
-        
+
         frame = cv2.flip(frame, 1)
         h, w, _ = frame.shape
         frame = virtual_mouse.detect_gestures(frame, h, w)
-        
+
         ret, buffer = cv2.imencode('.jpg', frame)
-        frame = buffer.tobytes()
         yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+               b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+
+    cap.release()
+    virtual_mouse.cap = None
     
     virtual_mouse.cap.release()
 
 def generate_posture_frames():
-    posture_monitor.cap = cv2.VideoCapture(1)  # Camera 1 for posture
+    global posture_camera_active
+
+    cap = cv2.VideoCapture(0)
+    posture_monitor.cap = cap
+
+    if not cap.isOpened():
+        posture_camera_active = False
+        return
+
     while posture_camera_active:
-        ret, frame = posture_monitor.cap.read()
+        ret, frame = cap.read()
         if not ret:
             break
-        
+
         frame = cv2.flip(frame, 1)
         frame = posture_monitor.process_frame(frame)
-        
+
         ret, buffer = cv2.imencode('.jpg', frame)
-        frame = buffer.tobytes()
         yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-    
-    posture_monitor.cap.release()
+               b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+
+    cap.release()
+    posture_monitor.cap = None
 
 @app.route('/')
 def index():
@@ -296,27 +327,41 @@ def video_posture():
 
 @app.route('/start_mouse', methods=['POST'])
 def start_mouse():
-    global mouse_camera_active
+    global mouse_camera_active, posture_camera_active
+    posture_camera_active = False
     mouse_camera_active = True
     return jsonify({"status": "started"})
 
 @app.route('/stop_mouse', methods=['POST'])
 def stop_mouse():
     global mouse_camera_active
+
     mouse_camera_active = False
+
+    if virtual_mouse.cap is not None:
+        virtual_mouse.cap.release()
+        virtual_mouse.cap = None
+
     return jsonify({"status": "stopped"})
 
 @app.route('/start_posture', methods=['POST'])
 def start_posture():
-    global posture_camera_active
+    global posture_camera_active, mouse_camera_active
+    mouse_camera_active = False
     posture_camera_active = True
     return jsonify({"status": "started"})
 
 @app.route('/stop_posture', methods=['POST'])
 def stop_posture():
-    global posture_camera_active
-    posture_camera_active = False
-    return jsonify({"status": "stopped"})
+   global posture_camera_active
+
+   posture_camera_active = False
+
+   if posture_monitor.cap is not None:
+        posture_monitor.cap.release()
+        posture_monitor.cap = None
+
+   return jsonify({"status": "stopped"})
 
 @app.route('/posture_status')
 def posture_status():

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Gesture Control & Posture Monitor Pro</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div class="logo">🤖</div>
+        <h1>AI Gesture Control & Posture Monitor</h1>
+        <p class="subtitle">
+          Advanced hand tracking with intelligent posture monitoring
+        </p>
+      </header>
+
+      <!-- Status Bar -->
+      <div class="status-bar">
+        <div class="status-item">
+          <div class="status-icon mouse">🖱️</div>
+          <div class="status-info">
+            <h3>Mouse Control</h3>
+            <p id="mouseStatusText">
+              Inactive
+              <span id="mouseStatusBadge" class="status-badge badge-inactive"
+                >Offline</span
+              >
+            </p>
+          </div>
+        </div>
+        <div class="status-item">
+          <div class="status-icon posture">🧘</div>
+          <div class="status-info">
+            <h3>Posture Monitor</h3>
+            <p id="postureStatusText">
+              Inactive
+              <span id="postureStatusBadge" class="status-badge badge-inactive"
+                >Offline</span
+              >
+            </p>
+          </div>
+        </div>
+        <div class="status-item">
+          <div class="status-icon health">💚</div>
+          <div class="status-info">
+            <h3>Health Score</h3>
+            <p id="healthScore">
+              Excellent <span class="status-badge badge-active">100%</span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Alert Section -->
+      <!--
+      <div class="alert-container">
+        <div class="alert-header">
+          <div class="alert-icon">⚠️</div>
+          <h2>Posture Alerts</h2>
+        </div>
+        <div id="postureAlert" class="alert-content">
+          <div class="alert-title">
+            <span>🚨</span>
+            <span>Bad Posture Detected!</span>
+          </div>
+          <div class="alert-message" id="alertMessage"></div>
+          <div class="alert-tips">
+            <h4>Quick Posture Tips:</h4>
+            <ul>
+              <li>Sit back in your chair with feet flat on floor</li>
+              <li>Keep shoulders relaxed and level</li>
+              <li>Position monitor at eye level</li>
+              <li>Take a 5-minute break every hour</li>
+            </ul>
+          </div>
+        </div>
+        <div id="noAlert" class="no-alert">
+          <span>✅</span>
+          <span>No posture alerts. Excellent posture!</span>
+        </div>
+      </div>-->
+
+      <!-- Camera Grid -->
+      <div class="main-grid">
+        <!-- Virtual Mouse -->
+        <div class="camera-card">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="card-icon">🖱️</div>
+              <h2>Virtual Mouse Control</h2>
+            </div>
+            <div class="card-status inactive" id="mouseCardStatus">
+              <span class="pulse-dot"></span>
+              <span>Inactive</span>
+            </div>
+          </div>
+          <div class="video-wrapper">
+            <img
+              id="mouseVideo"
+              class="video-feed"
+              style="display: none"
+              alt="Mouse Camera"
+            />
+            <div id="mousePlaceholder" class="video-placeholder">
+              <div class="video-placeholder-icon">📷</div>
+              <div class="video-placeholder-text">
+                Camera feed will appear here
+              </div>
+            </div>
+            <div class="video-overlay" style="display: none" id="mouseOverlay">
+              🟢 LIVE
+            </div>
+          </div>
+          <div class="controls">
+            <button class="btn-start" id="startMouse">
+              <span>▶</span>
+              <span>Start Mouse Control</span>
+            </button>
+            <button class="btn-stop" id="stopMouse" disabled>
+              <span>⏸</span>
+              <span>Stop Mouse</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Posture Monitor -->
+        <div class="camera-card">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="card-icon">🧘</div>
+              <h2>Posture Monitoring</h2>
+            </div>
+            <div class="card-status inactive" id="postureCardStatus">
+              <span class="pulse-dot"></span>
+              <span>Inactive</span>
+            </div>
+          </div>
+          <div class="video-wrapper">
+            <img
+              id="postureVideo"
+              class="video-feed"
+              style="display: none"
+              alt="Posture Camera"
+            />
+            <div id="posturePlaceholder" class="video-placeholder">
+              <div class="video-placeholder-icon">📷</div>
+              <div class="video-placeholder-text">
+                Camera feed will appear here
+              </div>
+            </div>
+            <div
+              class="video-overlay"
+              style="display: none"
+              id="postureOverlay"
+            >
+              🟢 LIVE
+            </div>
+          </div>
+          <div class="controls">
+            <button class="btn-start" id="startPosture">
+              <span>▶</span>
+              <span>Start Posture Monitor</span>
+            </button>
+            <button class="btn-stop" id="stopPosture" disabled>
+              <span>⏸</span>
+              <span>Stop Monitor</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Instructions -->
+      <div class="instructions">
+        <h2>📚 How to Use the System</h2>
+        <div class="gesture-grid">
+          <div class="gesture-card">
+            <div class="gesture-header">
+              <span class="gesture-emoji">👆</span>
+              <h3>Move Cursor</h3>
+            </div>
+            <p>
+              Point with your index finger to smoothly move the cursor across
+              the screen
+            </p>
+          </div>
+          <div class="gesture-card">
+            <div class="gesture-header">
+              <span class="gesture-emoji">👌</span>
+              <h3>Left Click</h3>
+            </div>
+            <p>
+              Touch your thumb and ring finger together to perform a left click
+            </p>
+          </div>
+          <div class="gesture-card">
+            <div class="gesture-header">
+              <span class="gesture-emoji">✌️</span>
+              <h3>Right Click</h3>
+            </div>
+            <p>
+              Touch your thumb and pinky finger together to perform a right
+              click
+            </p>
+          </div>
+          <div class="gesture-card">
+            <div class="gesture-header">
+              <span class="gesture-emoji">🔄</span>
+              <h3>Switch Tab</h3>
+            </div>
+            <p>
+              Touch your thumb and middle finger together to switch between tabs
+            </p>
+          </div>
+          <div class="gesture-card">
+            <div class="gesture-header">
+              <span class="gesture-emoji">🪑</span>
+              <h3>Good Posture</h3>
+            </div>
+            <p>
+              Keep your back straight, shoulders level, and head aligned with
+              your spine
+            </p>
+          </div>
+          <div class="gesture-card">
+            <div class="gesture-header">
+              <span class="gesture-emoji">⏱️</span>
+              <h3>Smart Alerts</h3>
+            </div>
+            <p>System alerts you after 10 seconds of bad posture detection</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  </body>
+</html>
